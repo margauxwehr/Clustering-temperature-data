@@ -1,0 +1,136 @@
+---
+title: "Temperature data"
+output:
+  html_document: default
+  pdf_document:
+    fig_height: 6
+    keep_tex: yes
+  word_document: default
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+The aim of the analysis is to study the climates of different European countries.
+To do so, temperatures (in Celsius) were collected monthly for the main European capitals and other major cities. In addition to the monthly temperatures, the average annual temperature and the thermal amplitude (difference
+between the maximum monthly average and the minimum monthly average of a city) were recorded for each city. We also include two quantitative positioning variables (latitude and longitude) as well as a categorical variable: Area
+(categorical variable with the four categories north, south, east, and west of Europe). 
+
+```{r}
+temperature <- read.table("data_clustering_Temperature.csv",header=TRUE, sep=";", dec=".", row.names=1)
+summary(temperature)
+library(FactoMineR)
+
+```
+
+
+In this lab, the objective is to
+group the countries together into comprehensive clusters so that the cities in a given cluster all present similar temperatures all year round. Once the clusters have been defined, it is important to describe them using the variables or specific individuals. 
+
+1) Performing a clustering on all the principal components of a PCA is equivalent to performing the clustering on the raw data. We use this strategy since it will allow us to use both PCA and clustering graphical representations to better explore and describe the data.  Perform a PCA on the data with the argument ncp = Inf to keep all the dimensions.
+
+Removing of the supplementary variables/individuals (we might not want to consider all observations)
+need to scale data (this is automatically done with PCA) otherwise circle of correlation would be almost circle
+not because the variables are not the same unit that you don't need to scale variables. ex: variance of august might be much higher than in december. otherwise we are going to focus on the variables that have the most variance`
+we can use PCA to plot our clustering in dimension 2 rather than dimension 12 (otherwise we would have 12 clusters)
+but the number of clusters chosen in the end is not linked to the number of variables reduced in PCA
+
+```{r eval=FALSE}
+
+res <- PCA(temperature, ind.sup = 24:25, quanti.sup = 13:16, quali.sup = 17, ncp = Inf, graph = FALSE)
+plot(res,cex= .7)
+```
+
+The function HCPC (Hierarchical clustering on Principal Components) can be applied on the PCA results. Let's start by doing an AHC and cut the tree to get 2 clusters. Plot the results. Comment.
+
+At the bottom of the tree, I have high inertia (between-inertia) we want to obtain a region with no variation between inertia (we don't lose much by adding a cluster) as you add clusters, the ratio with the previous one decreases. Within inertia is high at the top of the tree. To have a good cluster: At the end we want a small within inertia and a large between inertia. for 1 cluster, the between inertia is 0. find a tradeoff (elbow point) where it doesn't change much to go from one cluster to another. You could have many different clusters with 0 within inertia and high between class inertia, or you could have 1 cluster with high within inertia.
+"good clustering": large enough clusters for errors to be small but not too few so that we can still have interpretation
+
+```{r eval = FALSE}
+res.hcpc <- HCPC(res, nb.clust = 2)
+```
+```{r}
+res.hcpc <- HCPC(res, nb.clust = 3)
+```
+
+```{r}
+res.hcpc$call$t
+```
+
+2) The quality of the clustering can be assessed by  the ratio of the between-class inertia divided by the total inertia. Compute it. Make a comment regarding this percentage and the percentage of inertia given by the first principal component. The loss of between inertia can be found in the following object.
+
+The higher the ratio of (between-class inertia / total ratio) the better.
+
+```{r eval=FALSE}
+res.hcpc$call$t$inert.gain
+```
+
+
+
+3) A potentially better clustering is suggested by default:
+take the vector that best describes the variance
+project the observations on that dimension which is going to be the eigenvector of the matrice
+
+```{r}
+res.hcpc <- HCPC(res, nb.clust = 5)
+res.hcpc$call$t
+```
+
+Compare the percentage of variance explained by the 3 clusters to the percentage of variance explained by the 2 first dimensions of the PCA. 
+
+We now aim at describing the clusters. We want to:
+
+- Find the variables which are most important for the partition
+- Characterize a class (group of individuals) in terms of
+ variables
+- Sort the variables that best describe the classes
+
+4) Suggest a way to know which quantitative variables best characterize the partition? Hint:
+
+We want to know if January can predict the cluster. The link between the variable January and that corresponding to the cluster.
+
+```{r }
+res.hcpc$desc.var$quanti.var
+```
+
+We want to analyse if September is representative of a clustering or not. if yes, the value of september should change over the clusters. (different value of september in cluster 1, cluster 2, cluster 3) look at mean of september in each cluster
+
+5) Suggest a strategy to describe the observations in cluster 1 using quantitative variables. Which variables describe them best? 
+
+6) Which observation is the most "typical/characteristic" of cluster 1. Hint: 
+
+```{r }
+res.hcpc$desc.ind
+```
+
+7) And for the categorical variables, any hints?
+
+```{r }
+res.hcpc$desc.var$test.chi2
+```
+
+
+```{r }
+res.hcpc$desc.var$category
+```
+
+
+
+You have access to all the plots and outputs presented in the lecture using:
+
+```{r, eval = FALSE }
+plot(res.hcpc,choice="tree")
+plot(res.hcpc,choice="3D.map")
+plot(res.hcpc,choice="map",draw.tree=FALSE)
+names(res.hcpc)
+res.hcpc$data.clust
+res.hcpc$desc.var
+res.hcpc$desc.axes
+res.hcpc$desc.ind
+```
+
+
+
+8) Using the kmeans function in R, perform a kmeans clustering.
+
+9) In practice, we often perform the CAH or the k-means on the $Q$ principal components to denoise the data. In this setting $Q$ is choosen as large since we do not want to loose any information, but want to discard the last components that can be considered as noise. Consequently, you may keep the number of dimensions $Q$ such that you keep 95% of the inertia in PCA. 
